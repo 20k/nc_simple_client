@@ -1,0 +1,3 @@
+[submodule "deps/libncclient"]
+	path = deps/libncclient
+	url = https://github.com/20k/libncclient.git
