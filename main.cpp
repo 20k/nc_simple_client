@@ -124,6 +124,16 @@ void print_thread(c_shared_data shared)
                 printf("%s\n", to_print.c_str());
             }
         }
+
+        /*if(command_info.type == server_command_server_scriptargs_ratelimit)
+        {
+            std::string name = c_str_consume(sa_server_scriptargs_ratelimit_to_script_name(command_info));
+
+            if(name.size() > 0)
+            {
+                found_unprocessed_autocompletes.insert(name);
+            }
+        }*/
     }
 }
 
@@ -181,15 +191,9 @@ int main()
             free_string(current_user);
         }
 
-        /*while(sd_has_front_read(shared))
-        {
-            char* c_data = sd_get_front_read(shared);
-            printf("%s\n", c_data);
-            free_string(c_data);
-        }*/
-
-        ///its only fine to do this here because the command prompt isn't event driven
+        ///its only fine to do this here because the command prompt isn't realtime
         ///normally run this on a clock of 500ms or so
+        ///kind of hacky, TODO: provide a clock
         sa_do_poll_server(shared);
     }
 
