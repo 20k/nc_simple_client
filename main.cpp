@@ -20,7 +20,7 @@ void print_thread(c_shared_data shared)
         {
             sized_string c_data = sd_get_front_read(shared);
 
-            server_command_info command_info = sa_server_response_to_info(c_data.str, c_data.num);
+            server_command_info command_info = sa_server_response_to_info(make_view(c_data));
 
             std::string to_print;
 
@@ -40,13 +40,13 @@ void print_thread(c_shared_data shared)
 
                 for(int i=0; i < chat_info.num_msgs; i++)
                 {
-                    chnls.push_back(c_str_to_cpp(chat_info.msgs[i].channel));
-                    msgs.push_back(c_str_to_cpp(chat_info.msgs[i].msg));
+                    chnls.push_back(c_str_sized_to_cpp(chat_info.msgs[i].channel));
+                    msgs.push_back(c_str_sized_to_cpp(chat_info.msgs[i].msg));
                 }
 
                 for(int i=0; i < chat_info.num_in_channels; i++)
                 {
-                    in_channels.push_back(c_str_to_cpp(chat_info.in_channels[i].channel));
+                    in_channels.push_back(c_str_sized_to_cpp(chat_info.in_channels[i].channel));
                 }
 
                 std::string str = "Joined Channels: ";
@@ -72,19 +72,19 @@ void print_thread(c_shared_data shared)
             {
                 script_argument_list args = sa_server_scriptargs_to_list(command_info);
 
-                if(args.scriptname != nullptr)
+                if(args.scriptname.str != nullptr && args.scriptname.num > 0)
                 {
                     std::vector<std::pair<std::string, std::string>> auto_args;
 
                     for(int i=0; i < args.num; i++)
                     {
-                        std::string key = c_str_to_cpp(args.args[i].key);
-                        std::string val = c_str_to_cpp(args.args[i].val);
+                        std::string key = c_str_sized_to_cpp(args.args[i].key);
+                        std::string val = c_str_sized_to_cpp(args.args[i].val);
 
                         auto_args.push_back({key, val});
                     }
 
-                    std::string scriptname = c_str_to_cpp(args.scriptname);
+                    std::string scriptname = c_str_sized_to_cpp(args.scriptname);
 
                     std::string str = "script " + scriptname + " takes args ";
 
@@ -173,20 +173,20 @@ int main()
             }
         }
 
-        if(sa_is_local_command(command.c_str()))
+        if(sa_is_local_command(make_view(command)))
         {
             sd_add_back_read(shared, make_view_from_raw("Unhandled Local Command"));
         }
         else
         {
             sized_string current_user = sd_get_user(shared);
-            char* up_handled = sa_default_up_handling(current_user.str, command.c_str(), "./scripts/");
-            char* server_command = sa_make_generic_server_command(up_handled);
+            sized_string up_handled = sa_default_up_handling(make_view(current_user), make_view(command), make_view_from_raw("./scripts/"));
+            sized_string server_command = sa_make_generic_server_command(make_view(up_handled));
 
-            sd_add_back_write(shared, make_view_from_raw(server_command));
+            sd_add_back_write(shared, make_view(server_command));
 
-            free_string(server_command);
-            free_string(up_handled);
+            free_sized_string(server_command);
+            free_sized_string(up_handled);
             free_sized_string(current_user);
         }
 
