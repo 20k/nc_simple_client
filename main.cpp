@@ -18,10 +18,9 @@ void print_thread(c_shared_data shared)
     {
         if(sd_has_front_read(shared))
         {
-            ///This needs to return length as well
-            char* c_data = sd_get_front_read(shared);
+            sized_string c_data = sd_get_front_read(shared);
 
-            server_command_info command_info = sa_server_response_to_info(c_data, std::strlen(c_data));
+            server_command_info command_info = sa_server_response_to_info(c_data.str, c_data.num);
 
             std::string to_print;
 
@@ -115,7 +114,7 @@ void print_thread(c_shared_data shared)
                 }
             }
 
-            free_string(c_data);
+            free_sized_string(c_data);
 
             sa_destroy_server_command_info(command_info);
 
@@ -147,7 +146,7 @@ int main()
     {
         std::string fauth = read_file_bin("key.key");
 
-        sd_set_auth(shared, fauth.c_str());
+        sd_set_auth(shared, make_view(fauth));
     }
 
     nc_start(shared, "77.96.132.101", "6760");
@@ -170,25 +169,25 @@ int main()
 
             if(spl.size() >= 2)
             {
-                sd_set_user(shared, spl[1].c_str());
+                sd_set_user(shared, make_view(spl[1]));
             }
         }
 
         if(sa_is_local_command(command.c_str()))
         {
-            sd_add_back_read(shared, "Unhandled Local Command");
+            sd_add_back_read(shared, make_view_from_raw("Unhandled Local Command"));
         }
         else
         {
-            char* current_user = sd_get_user(shared);
-            char* up_handled = sa_default_up_handling(current_user, command.c_str(), "./scripts/");
+            sized_string current_user = sd_get_user(shared);
+            char* up_handled = sa_default_up_handling(current_user.str, command.c_str(), "./scripts/");
             char* server_command = sa_make_generic_server_command(up_handled);
 
-            sd_add_back_write(shared, server_command);
+            sd_add_back_write(shared, make_view_from_raw(server_command));
 
             free_string(server_command);
             free_string(up_handled);
-            free_string(current_user);
+            free_sized_string(current_user);
         }
 
         ///its only fine to do this here because the command prompt isn't realtime
