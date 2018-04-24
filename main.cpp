@@ -124,17 +124,6 @@ void print_thread(c_shared_data shared)
                 printf("%s\n", to_print.c_str());
             }
         }
-
-
-        /*if(command_info.type == server_command_server_scriptargs_ratelimit)
-        {
-            std::string name = c_str_consume(sa_server_scriptargs_ratelimit_to_script_name(command_info));
-
-            if(name.size() > 0)
-            {
-                found_unprocessed_autocompletes.insert(name);
-            }
-        }*/
     }
 }
 
