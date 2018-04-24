@@ -4,18 +4,137 @@
 #include <libncclient/c_shared_data.h>
 
 #include <libncclient/nc_util.hpp>
+#include <libncclient/nc_string_interop.hpp>
 #include <thread>
+#include <map>
+#include <cstring>
 
 void print_thread(c_shared_data shared)
 {
+    std::map<std::string, std::vector<std::pair<std::string, std::string>>> found_args;
+    std::map<std::string, bool> is_valid;
+
     while(1)
     {
         if(sd_has_front_read(shared))
         {
+            ///This needs to return length as well
             char* c_data = sd_get_front_read(shared);
-            printf("%s\n", c_data);
+
+            server_command_info command_info = sa_server_response_to_info(c_data, std::strlen(c_data));
+
+            std::string to_print;
+
+            if(command_info.type == server_command_command)
+            {
+                to_print = c_str_consume(sa_command_to_human_readable(command_info));
+            }
+
+            if(command_info.type == server_command_chat_api)
+            {
+                std::vector<std::string> chnls;
+                std::vector<std::string> msgs;
+
+                std::vector<std::string> in_channels;
+
+                chat_api_info chat_info = sa_chat_api_to_info(command_info);
+
+                for(int i=0; i < chat_info.num_msgs; i++)
+                {
+                    chnls.push_back(c_str_to_cpp(chat_info.msgs[i].channel));
+                    msgs.push_back(c_str_to_cpp(chat_info.msgs[i].msg));
+                }
+
+                for(int i=0; i < chat_info.num_in_channels; i++)
+                {
+                    in_channels.push_back(c_str_to_cpp(chat_info.in_channels[i].channel));
+                }
+
+                std::string str = "Joined Channels: ";
+
+                for(int i=0; i < chat_info.num_in_channels; i++)
+                {
+                    str += in_channels[i] + " ";
+                }
+
+                str += "\n";
+
+                for(int i=0; i < chat_info.num_msgs; i++)
+                {
+                    str += chnls[i] + " : " + msgs[i];
+                }
+
+                to_print = str;
+
+                sa_destroy_chat_api_info(chat_info);
+            }
+
+            if(command_info.type == server_command_server_scriptargs)
+            {
+                script_argument_list args = sa_server_scriptargs_to_list(command_info);
+
+                if(args.scriptname != nullptr)
+                {
+                    std::vector<std::pair<std::string, std::string>> auto_args;
+
+                    for(int i=0; i < args.num; i++)
+                    {
+                        std::string key = c_str_to_cpp(args.args[i].key);
+                        std::string val = c_str_to_cpp(args.args[i].val);
+
+                        auto_args.push_back({key, val});
+                    }
+
+                    std::string scriptname = c_str_to_cpp(args.scriptname);
+
+                    std::string str = "script " + scriptname + " takes args ";
+
+                    for(auto& i : auto_args)
+                    {
+                        str = str + i.first + " " + i.second;
+                    }
+
+                    str = str + "\n";
+
+                    to_print = str;
+
+                    found_args[scriptname] = auto_args;
+                    is_valid[scriptname] = true;
+                }
+
+                sa_destroy_script_argument_list(args);
+            }
+
+            if(command_info.type == server_command_server_scriptargs_invalid)
+            {
+                std::string name = c_str_consume(sa_server_scriptargs_invalid_to_script_name(command_info));
+
+                if(name.size() > 0)
+                {
+                    is_valid[name] = false;
+                }
+            }
+
             free_string(c_data);
+
+            sa_destroy_server_command_info(command_info);
+
+            if(to_print.size() > 0)
+            {
+                printf("%s\n", to_print.c_str());
+            }
         }
+
+
+        /*if(command_info.type == server_command_server_scriptargs_ratelimit)
+        {
+            std::string name = c_str_consume(sa_server_scriptargs_ratelimit_to_script_name(command_info));
+
+            if(name.size() > 0)
+            {
+                found_unprocessed_autocompletes.insert(name);
+            }
+        }*/
     }
 }
 
